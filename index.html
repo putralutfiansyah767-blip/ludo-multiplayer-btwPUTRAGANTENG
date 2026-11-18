@@ -1,0 +1,1429 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>LUDO MULTIPLAYER</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --red-main: #ef4444;
+      --blue-main: #3b82f6;
+      --green-main: #10b981;
+      --neon-main: #ccff00;
+      --neon-glow: rgba(204, 255, 0, 0.78);
+    }
+
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background: radial-gradient(circle at top center, #1e293b 0%, #0f172a 65%, #020617 100%);
+      color: #f8fafc;
+      min-height: 100vh;
+      margin: 0;
+      overflow-x: hidden;
+    }
+
+    /* Papan Ludo 15x15 Responsif */
+    .ludo-board-wrapper {
+      aspect-ratio: 1 / 1;
+      width: 100%;
+      max-width: 540px;
+      background: #f8fafc;
+      border-radius: 18px;
+      padding: 8px;
+      box-shadow:
+        0 25px 50px -12px rgba(0, 0, 0, 0.75),
+        0 0 0 2px rgba(255, 255, 255, 0.12),
+        0 0 35px rgba(204, 255, 0, 0.14);
+      position: relative;
+    }
+
+    .ludo-grid {
+      display: grid;
+      grid-template-columns: repeat(15, 1fr);
+      grid-template-rows: repeat(15, 1fr);
+      width: 100%;
+      height: 100%;
+      background-color: #cbd5e1;
+      gap: 1px;
+      border: 2px solid #334155;
+      border-radius: 12px;
+      overflow: hidden;
+      position: relative;
+      z-index: 1;
+    }
+
+    .cell {
+      background-color: #ffffff;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Warna Jalur Khusus */
+    .cell-red { background-color: #ef4444; }
+    .cell-blue { background-color: #3b82f6; }
+    .cell-green { background-color: #10b981; }
+    .cell-neon {
+      background-color: #ccff00;
+      box-shadow: inset 0 0 8px rgba(163, 230, 53, 0.75);
+    }
+
+    /* Bintang Kotak Aman */
+    .safe-star::after {
+      content: '★';
+      font-size: clamp(11px, 2.2vw, 17px);
+      color: rgba(15, 23, 42, 0.42);
+      position: absolute;
+      pointer-events: none;
+      line-height: 1;
+    }
+    .cell-red.safe-star::after,
+    .cell-blue.safe-star::after,
+    .cell-green.safe-star::after {
+      color: rgba(255, 255, 255, 0.88);
+    }
+    .cell-neon.safe-star::after {
+      color: rgba(15, 23, 42, 0.72);
+    }
+
+    /* Home Base Sudut 6x6 */
+    .home-base {
+      position: absolute;
+      width: 40%;
+      height: 40%;
+      padding: 8%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2;
+      border: 1px solid #334155;
+      pointer-events: none;
+    }
+    .hb-red { top: 0; left: 0; background: linear-gradient(135deg, #ef4444, #dc2626); }
+    .hb-green { top: 0; right: 0; background: linear-gradient(135deg, #10b981, #059669); }
+    .hb-neon {
+      bottom: 0;
+      right: 0;
+      background: linear-gradient(135deg, #ccff00, #a3e635);
+      box-shadow: inset 0 0 18px rgba(255, 255, 255, 0.5);
+    }
+    .hb-blue { bottom: 0; left: 0; background: linear-gradient(135deg, #3b82f6, #2563eb); }
+
+    .home-inner {
+      width: 100%;
+      height: 100%;
+      background: #ffffff;
+      border-radius: 16%;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: 1fr 1fr;
+      gap: 14%;
+      padding: 15%;
+      box-shadow: inset 0 3px 8px rgba(0, 0, 0, 0.18);
+    }
+
+    .home-slot {
+      border-radius: 50%;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .slot-red { background: #fee2e2; border: 2px solid #ef4444; }
+    .slot-green { background: #d1fae5; border: 2px solid #10b981; }
+    .slot-neon {
+      background: #f7fee7;
+      border: 2px solid #84cc16;
+      box-shadow: 0 0 10px rgba(204, 255, 0, 0.65);
+    }
+    .slot-blue { background: #dbeafe; border: 2px solid #3b82f6; }
+
+    /* Segitiga Tengah 3x3 (Home Finish) */
+    .center-home {
+      position: absolute;
+      top: 40%;
+      left: 40%;
+      width: 20%;
+      height: 20%;
+      z-index: 3;
+      border: 1px solid #334155;
+      overflow: hidden;
+      pointer-events: none;
+    }
+
+    /* Layer Pion di Atas Papan */
+    .tokens-layer {
+      position: absolute;
+      inset: 8px;
+      pointer-events: none;
+      z-index: 20;
+    }
+
+    /* =========================================
+       DESAIN PION 3D BERGAYA BIDAK / PIN MEWAH
+    ========================================= */
+    .token {
+      position: absolute;
+      width: 6.2%;
+      height: 8.6%;
+      /* Titik jangkar (anchor) tepat di pusat alas lingkaran pion (78% dari atas) */
+      transform: translate(-50%, -78%);
+      transform-origin: 50% 78%;
+      transition: top 0.24s cubic-bezier(0.34, 1.56, 0.64, 1),
+                  left 0.24s cubic-bezier(0.34, 1.56, 0.64, 1),
+                  transform 0.2s ease;
+      pointer-events: none;
+      cursor: default;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      touch-action: manipulation;
+      filter: drop-shadow(0 4px 4px rgba(2, 6, 23, 0.55));
+    }
+
+    .token svg {
+      width: 100%;
+      height: 100%;
+      overflow: visible;
+      pointer-events: none;
+      display: block;
+    }
+
+    /* Cincin Sorotan di Bawah Alas Saat Pion Bisa Digerakkan */
+    .token-aura {
+      position: absolute;
+      bottom: 8%;
+      left: 50%;
+      width: 96%;
+      height: 36%;
+      border-radius: 50%;
+      transform: translateX(-50%);
+      pointer-events: none;
+      opacity: 0;
+    }
+
+    /* Pion yang bisa diklik / digerakkan */
+    .token.movable {
+      pointer-events: auto !important;
+      cursor: pointer !important;
+      z-index: 45 !important;
+      animation: bounceChessPawn 0.72s infinite alternate cubic-bezier(0.28, 0.84, 0.42, 1);
+    }
+
+    .token.movable .token-aura {
+      opacity: 1;
+      border: 2.5px solid #fef08a;
+      box-shadow: 0 0 12px 3px rgba(250, 204, 21, 0.9), inset 0 0 6px rgba(254, 240, 138, 0.85);
+      animation: auraRingPulse 0.72s infinite alternate ease-in-out;
+    }
+
+    @keyframes bounceChessPawn {
+      0% {
+        transform: translate(-50%, -78%) scale(1.04);
+        filter: drop-shadow(0 4px 5px rgba(2, 6, 23, 0.6)) drop-shadow(0 0 6px rgba(254, 240, 138, 0.65));
+      }
+      100% {
+        transform: translate(-50%, -94%) scale(1.16);
+        filter: drop-shadow(0 10px 8px rgba(2, 6, 23, 0.45)) drop-shadow(0 0 14px rgba(250, 204, 21, 0.95));
+      }
+    }
+
+    @keyframes auraRingPulse {
+      0% { transform: translateX(-50%) scale(0.95); opacity: 0.75; }
+      100% { transform: translateX(-50%) scale(1.32); opacity: 1; }
+    }
+
+    /* =========================================
+       DADU 3D ESTETIK & 100% INTERAKTIF KLIK/TAP
+    ========================================= */
+    .dice-stage {
+      width: 84px;
+      height: 84px;
+      perspective: 700px;
+      cursor: pointer;
+      pointer-events: auto;
+      position: relative;
+      z-index: 15;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      touch-action: manipulation;
+    }
+
+    .dice-stage.disabled {
+      cursor: not-allowed;
+      opacity: 0.72;
+    }
+
+    .dice-stage.ready-to-roll::before {
+      content: '';
+      position: absolute;
+      inset: -8px;
+      border-radius: 22px;
+      background: var(--active-glow, rgba(255, 255, 255, 0.35));
+      filter: blur(10px);
+      animation: dicePulseAura 1.2s infinite alternate ease-in-out;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    @keyframes dicePulseAura {
+      from { transform: scale(0.92); opacity: 0.55; }
+      to { transform: scale(1.1); opacity: 1; }
+    }
+
+    .dice-cube {
+      width: 64px;
+      height: 64px;
+      position: relative;
+      transform-style: preserve-3d;
+      transition: transform 0.8s cubic-bezier(0.22, 1.25, 0.36, 1);
+      z-index: 10;
+      pointer-events: auto;
+      cursor: pointer;
+    }
+
+    .dice-cube.rolling {
+      animation: diceTumble 0.5s linear infinite;
+    }
+
+    @keyframes diceTumble {
+      0%   { transform: rotateX(0deg) rotateY(0deg) rotateZ(0deg) scale(1.08); }
+      25%  { transform: rotateX(190deg) rotateY(95deg) rotateZ(45deg) scale(1.15); }
+      50%  { transform: rotateX(360deg) rotateY(210deg) rotateZ(135deg) scale(1.1); }
+      75%  { transform: rotateX(540deg) rotateY(300deg) rotateZ(240deg) scale(1.15); }
+      100% { transform: rotateX(720deg) rotateY(360deg) rotateZ(360deg) scale(1.08); }
+    }
+
+    .dice-face {
+      position: absolute;
+      width: 64px;
+      height: 64px;
+      border-radius: 14px;
+      background: linear-gradient(145deg, #ffffff 0%, #f1f5f9 65%, #cbd5e1 100%);
+      border: 1.5px solid #e2e8f0;
+      box-shadow:
+        inset 0 3px 6px rgba(255, 255, 255, 0.95),
+        inset 0 -4px 8px rgba(15, 23, 42, 0.16),
+        0 4px 12px rgba(0, 0, 0, 0.3);
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: repeat(3, 1fr);
+      padding: 8px;
+      gap: 3px;
+      backface-visibility: hidden;
+      pointer-events: none;
+    }
+
+    /* Orientasi 6 Sisi Kubus Dadu */
+    .face-1 { transform: rotateY(0deg) translateZ(32px); }
+    .face-6 { transform: rotateY(180deg) translateZ(32px); }
+    .face-2 { transform: rotateY(90deg) translateZ(32px); }
+    .face-5 { transform: rotateY(-90deg) translateZ(32px); }
+    .face-3 { transform: rotateX(90deg) translateZ(32px); }
+    .face-4 { transform: rotateX(-90deg) translateZ(32px); }
+
+    /* Titik Dadu (Pips) */
+    .pip {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%, #334155, #0f172a);
+      box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.8), 0 1px 0 rgba(255, 255, 255, 0.8);
+      align-self: center;
+      justify-self: center;
+    }
+    .pip.red-pip {
+      background: radial-gradient(circle at 35% 35%, #f87171, #dc2626);
+      width: 14px;
+      height: 14px;
+    }
+
+    .neon-text-glow {
+      color: #ccff00;
+      text-shadow: 0 0 12px rgba(204, 255, 0, 0.72);
+    }
+  </style>
+</head>
+<body class="flex flex-col items-center justify-between p-3 sm:p-5">
+
+  <!-- Header Atas -->
+  <header class="w-full max-w-5xl flex flex-wrap items-center justify-between gap-2 mb-3 z-30">
+    <div class="flex items-center gap-2.5">
+      <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-red-500 via-blue-500 to-lime-400 flex items-center justify-center shadow-lg font-extrabold text-slate-950 text-lg">
+        L
+      </div>
+      <div>
+        <h1 class="text-lg sm:text-xl font-extrabold tracking-tight leading-none text-white">
+          LUDO <span class="neon-text-glow">MULTIPLAYER</span>
+        </h1>
+        <p class="text-[11px] text-slate-400 mt-0.5">follow tt @1nonlytraa</p>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-2">
+      <button id="btnSoundToggle" type="button" onclick="toggleSound()" class="px-3 py-1.5 rounded-xl bg-slate-800/90 hover:bg-slate-700 border border-slate-700 text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer">
+        <span id="soundIcon">🔊</span>
+        <span class="hidden sm:inline" id="soundLabel">Suara Aktif</span>
+      </button>
+      <button type="button" onclick="openSetupModal()" class="px-3 py-1.5 rounded-xl bg-slate-800/90 hover:bg-slate-700 border border-slate-700 text-xs font-semibold transition cursor-pointer">
+        ⚙️ Pengaturan
+      </button>
+    </div>
+  </header>
+
+  <!-- Area Utama Permainan -->
+  <main class="w-full max-w-4xl flex flex-col lg:flex-row items-center justify-center gap-4 lg:gap-8 my-auto">
+
+    <!-- Papan Ludo 15x15 Klasik -->
+    <div class="ludo-board-wrapper order-1">
+      <div id="ludoGrid" class="ludo-grid">
+        <!-- 4 Home Base Sudut -->
+        <div class="home-base hb-red">
+          <div class="home-inner">
+            <div class="home-slot slot-red"></div>
+            <div class="home-slot slot-red"></div>
+            <div class="home-slot slot-red"></div>
+            <div class="home-slot slot-red"></div>
+          </div>
+        </div>
+        <div class="home-base hb-green">
+          <div class="home-inner">
+            <div class="home-slot slot-green"></div>
+            <div class="home-slot slot-green"></div>
+            <div class="home-slot slot-green"></div>
+            <div class="home-slot slot-green"></div>
+          </div>
+        </div>
+        <div class="home-base hb-neon">
+          <div class="home-inner">
+            <div class="home-slot slot-neon"></div>
+            <div class="home-slot slot-neon"></div>
+            <div class="home-slot slot-neon"></div>
+            <div class="home-slot slot-neon"></div>
+          </div>
+        </div>
+        <div class="home-base hb-blue">
+          <div class="home-inner">
+            <div class="home-slot slot-blue"></div>
+            <div class="home-slot slot-blue"></div>
+            <div class="home-slot slot-blue"></div>
+            <div class="home-slot slot-blue"></div>
+          </div>
+        </div>
+
+        <!-- Area Segitiga Finish Tengah (SVG Presisi) -->
+        <div class="center-home">
+          <svg viewBox="0 0 100 100" class="w-full h-full block">
+            <!-- Kiri: Merah -->
+            <polygon points="0,0 50,50 0,100" fill="#ef4444" stroke="#334155" stroke-width="1"/>
+            <!-- Atas: Hijau -->
+            <polygon points="0,0 100,0 50,50" fill="#10b981" stroke="#334155" stroke-width="1"/>
+            <!-- Kanan: Neon -->
+            <polygon points="100,0 100,100 50,50" fill="#ccff00" stroke="#334155" stroke-width="1"/>
+            <!-- Bawah: Biru -->
+            <polygon points="0,100 100,100 50,50" fill="#3b82f6" stroke="#334155" stroke-width="1"/>
+            <!-- Mahkota Tengah -->
+            <circle cx="50" cy="50" r="14" fill="#0f172a" stroke="#ffffff" stroke-width="2"/>
+            <text x="50" y="54.5" text-anchor="middle" font-size="13" fill="#ccff00">👑</text>
+          </svg>
+        </div>
+      </div>
+
+      <!-- Layer Render Pion Dinamis -->
+      <div id="tokensLayer" class="tokens-layer"></div>
+    </div>
+
+    <!-- Panel Kontrol Dadu 3D -->
+    <div class="w-full max-w-[540px] lg:w-76 flex flex-col gap-3 order-2">
+      <div id="dicePanel" class="rounded-2xl bg-slate-900/90 border border-slate-700/80 p-4 shadow-xl flex flex-col items-center text-center backdrop-blur-md">
+        <div class="flex items-center justify-between w-full mb-2">
+          <span id="turnBadge" class="px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-red-500/20 text-red-400 border border-red-500/40">
+            GILIRAN MERAH
+          </span>
+          <span id="diceValueBadge" class="text-xs font-bold text-slate-400">
+            Angka: <strong id="lastRollText" class="text-white text-sm">-</strong>
+          </span>
+        </div>
+
+        <!-- Kubus Dadu 3D -->
+        <div class="my-2 flex items-center justify-center">
+          <div id="diceStage" class="dice-stage ready-to-roll" role="button" tabindex="0" aria-label="Lempar Dadu" onclick="handleDiceClick()" title="Klik untuk melempar dadu">
+            <div id="diceCube" class="dice-cube" style="transform: rotateX(-22deg) rotateY(28deg);">
+              <!-- Sisi 1 -->
+              <div class="dice-face face-1">
+                <span></span><span></span><span></span>
+                <span></span><span class="pip red-pip"></span><span></span>
+                <span></span><span></span><span></span>
+              </div>
+              <!-- Sisi 2 -->
+              <div class="dice-face face-2">
+                <span class="pip"></span><span></span><span></span>
+                <span></span><span></span><span></span>
+                <span></span><span></span><span class="pip"></span>
+              </div>
+              <!-- Sisi 3 -->
+              <div class="dice-face face-3">
+                <span class="pip"></span><span></span><span></span>
+                <span></span><span class="pip"></span><span></span>
+                <span></span><span></span><span class="pip"></span>
+              </div>
+              <!-- Sisi 4 -->
+              <div class="dice-face face-4">
+                <span class="pip"></span><span></span><span class="pip"></span>
+                <span></span><span></span><span></span>
+                <span class="pip"></span><span></span><span class="pip"></span>
+              </div>
+              <!-- Sisi 5 -->
+              <div class="dice-face face-5">
+                <span class="pip"></span><span></span><span class="pip"></span>
+                <span></span><span class="pip"></span><span></span>
+                <span class="pip"></span><span></span><span class="pip"></span>
+              </div>
+              <!-- Sisi 6 -->
+              <div class="dice-face face-6">
+                <span class="pip"></span><span></span><span class="pip"></span>
+                <span class="pip"></span><span></span><span class="pip"></span>
+                <span class="pip"></span><span></span><span class="pip"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Area Teks Hasil Lemparan Dadu (Kosong saat awal game) -->
+        <p id="statusText" class="text-xs sm:text-sm font-extrabold tracking-wide min-h-[2rem] flex items-center justify-center px-1"></p>
+
+        <button id="btnRollMain" type="button" onclick="handleDiceClick()" class="mt-2 w-full py-2.5 px-4 rounded-xl font-bold text-xs sm:text-sm tracking-wide bg-gradient-to-r from-lime-400 to-emerald-400 text-slate-950 hover:brightness-110 active:scale-95 transition shadow-lg cursor-pointer">
+          🎲 Lempar Dadu
+        </button>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Modal Pengaturan Pemain (Tersembunyi di awal agar game langsung bisa dimainkan) -->
+  <div id="setupModal" class="hidden fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4">
+    <div class="w-full max-w-md rounded-3xl bg-slate-900 border border-slate-700/80 p-6 shadow-2xl">
+      <div class="text-center mb-5">
+        <span class="inline-block px-3 py-1 rounded-full text-xs font-bold bg-lime-400/15 text-lime-300 border border-lime-400/30 mb-2">
+          MAKSIMAL 4 PEMAIN
+        </span>
+        <h2 class="text-2xl font-extrabold text-white">Pengaturan Ludo</h2>
+        <p class="text-xs text-slate-400 mt-1">Atur pemain untuk tiap warna (Manusia, Bot AI, atau Nonaktif)</p>
+      </div>
+
+      <div class="space-y-3 mb-6" id="playerConfigList"></div>
+
+      <div id="setupError" class="hidden text-center text-xs font-semibold text-red-400 mb-3">
+        Minimal harus ada 2 pemain aktif untuk memulai permainan!
+      </div>
+
+      <div class="flex gap-2.5">
+        <button type="button" onclick="closeSetupModal()" class="w-1/3 py-3 rounded-2xl font-bold text-sm bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition cursor-pointer">
+          Batal
+        </button>
+        <button type="button" onclick="startNewGame()" class="w-2/3 py-3 rounded-2xl font-extrabold text-sm bg-gradient-to-r from-lime-400 via-emerald-400 to-cyan-400 text-slate-950 hover:brightness-110 active:scale-98 transition shadow-lg shadow-lime-400/20 cursor-pointer">
+          Mulai Ulang Game
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Kemenangan / Podium Juara -->
+  <div id="victoryModal" class="hidden fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4">
+    <div class="w-full max-w-md rounded-3xl bg-slate-900 border border-lime-400/40 p-6 text-center shadow-2xl">
+      <div class="text-5xl mb-2">🏆</div>
+      <h2 class="text-2xl font-extrabold text-white mb-1">Permainan Selesai!</h2>
+      <p class="text-xs text-slate-400 mb-5">Berikut urutan peringkat pemenang Ludo</p>
+
+      <div id="podiumList" class="space-y-2.5 mb-6 text-left"></div>
+
+      <button type="button" onclick="startNewGame()" class="w-full py-3 rounded-2xl font-extrabold text-sm bg-gradient-to-r from-lime-400 to-emerald-400 text-slate-950 hover:brightness-110 transition cursor-pointer">
+        Main Lagi
+      </button>
+    </div>
+  </div>
+
+  <script>
+    /* =========================================================================
+       1. KONFIGURASI WARNA, KOORDINAT PAPAN 15x15, DAN ATURAN JALUR LUDO KLASIK
+       ========================================================================= */
+    const PLAYER_DEFS = {
+      red: {
+        id: 'red',
+        name: 'Merah',
+        hex: '#ef4444',
+        lightHex: '#fca5a5',
+        midHex: '#ef4444',
+        darkHex: '#991b1b',
+        rimHex: '#fef08a',
+        glow: 'rgba(239, 68, 68, 0.45)',
+        badgeClass: 'bg-red-500/20 text-red-400 border-red-500/40',
+        startIndex: 0,
+        // Pusat presisi 4 lingkaran dudukan di dalam home-base Merah (6x6 kiri atas)
+        homeSlots: [
+          { r: 1.72, c: 1.72 }, { r: 1.72, c: 3.28 },
+          { r: 3.28, c: 1.72 }, { r: 3.28, c: 3.28 }
+        ],
+        homeStretch: [
+          { r: 7, c: 1 }, { r: 7, c: 2 }, { r: 7, c: 3 }, { r: 7, c: 4 }, { r: 7, c: 5 },
+          { r: 7, c: 6.15 }
+        ]
+      },
+      green: {
+        id: 'green',
+        name: 'Hijau',
+        hex: '#10b981',
+        lightHex: '#6ee7b7',
+        midHex: '#10b981',
+        darkHex: '#065f46',
+        rimHex: '#fef08a',
+        glow: 'rgba(16, 185, 129, 0.45)',
+        badgeClass: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40',
+        startIndex: 13,
+        // Pusat presisi 4 lingkaran dudukan di dalam home-base Hijau (6x6 kanan atas)
+        homeSlots: [
+          { r: 1.72, c: 10.72 }, { r: 1.72, c: 12.28 },
+          { r: 3.28, c: 10.72 }, { r: 3.28, c: 12.28 }
+        ],
+        homeStretch: [
+          { r: 1, c: 7 }, { r: 2, c: 7 }, { r: 3, c: 7 }, { r: 4, c: 7 }, { r: 5, c: 7 },
+          { r: 6.15, c: 7 }
+        ]
+      },
+      neon: {
+        id: 'neon',
+        name: 'Neon',
+        hex: '#ccff00',
+        lightHex: '#f7fee7',
+        midHex: '#ccff00',
+        darkHex: '#4d7c0f',
+        rimHex: '#0f172a',
+        glow: 'rgba(204, 255, 0, 0.6)',
+        badgeClass: 'bg-lime-400/20 text-lime-300 border-lime-400/50',
+        startIndex: 26,
+        // Pusat presisi 4 lingkaran dudukan di dalam home-base Neon (6x6 kanan bawah)
+        homeSlots: [
+          { r: 10.72, c: 10.72 }, { r: 10.72, c: 12.28 },
+          { r: 12.28, c: 10.72 }, { r: 12.28, c: 12.28 }
+        ],
+        homeStretch: [
+          { r: 7, c: 13 }, { r: 7, c: 12 }, { r: 7, c: 11 }, { r: 7, c: 10 }, { r: 7, c: 9 },
+          { r: 7, c: 7.85 }
+        ]
+      },
+      blue: {
+        id: 'blue',
+        name: 'Biru',
+        hex: '#3b82f6',
+        lightHex: '#93c5fd',
+        midHex: '#3b82f6',
+        darkHex: '#1e40af',
+        rimHex: '#fef08a',
+        glow: 'rgba(59, 130, 246, 0.45)',
+        badgeClass: 'bg-blue-500/20 text-blue-400 border-blue-500/40',
+        startIndex: 39,
+        // Pusat presisi 4 lingkaran dudukan di dalam home-base Biru (6x6 kiri bawah)
+        homeSlots: [
+          { r: 10.72, c: 1.72 }, { r: 10.72, c: 3.28 },
+          { r: 12.28, c: 1.72 }, { r: 12.28, c: 3.28 }
+        ],
+        homeStretch: [
+          { r: 13, c: 7 }, { r: 12, c: 7 }, { r: 11, c: 7 }, { r: 10, c: 7 }, { r: 9, c: 7 },
+          { r: 7.85, c: 7 }
+        ]
+      }
+    };
+
+    const TURN_ORDER = ['red', 'green', 'neon', 'blue'];
+
+    // 52 Koordinat Jalur Utama searah jarum jam
+    const MAIN_TRACK = [
+      { r: 6, c: 1 }, { r: 6, c: 2 }, { r: 6, c: 3 }, { r: 6, c: 4 }, { r: 6, c: 5 },
+      { r: 5, c: 6 }, { r: 4, c: 6 }, { r: 3, c: 6 }, { r: 2, c: 6 }, { r: 1, c: 6 }, { r: 0, c: 6 },
+      { r: 0, c: 7 }, { r: 0, c: 8 },
+      { r: 1, c: 8 }, { r: 2, c: 8 }, { r: 3, c: 8 }, { r: 4, c: 8 }, { r: 5, c: 8 },
+      { r: 6, c: 9 }, { r: 6, c: 10 }, { r: 6, c: 11 }, { r: 6, c: 12 }, { r: 6, c: 13 }, { r: 6, c: 14 },
+      { r: 7, c: 14 }, { r: 8, c: 14 },
+      { r: 8, c: 13 }, { r: 8, c: 12 }, { r: 8, c: 11 }, { r: 8, c: 10 }, { r: 8, c: 9 },
+      { r: 9, c: 8 }, { r: 10, c: 8 }, { r: 11, c: 8 }, { r: 12, c: 8 }, { r: 13, c: 8 }, { r: 14, c: 8 },
+      { r: 14, c: 7 }, { r: 14, c: 6 },
+      { r: 13, c: 6 }, { r: 12, c: 6 }, { r: 11, c: 6 }, { r: 10, c: 6 }, { r: 9, c: 6 },
+      { r: 8, c: 5 }, { r: 8, c: 4 }, { r: 8, c: 3 }, { r: 8, c: 2 }, { r: 8, c: 1 }, { r: 8, c: 0 },
+      { r: 7, c: 0 }, { r: 6, c: 0 }
+    ];
+
+    const SAFE_INDICES = new Set([0, 8, 13, 21, 26, 34, 39, 47]);
+
+    /* =========================================================================
+       2. EFEK SUARA SINTETIS WEB AUDIO API
+       ========================================================================= */
+    let audioCtx = null;
+    let soundEnabled = true;
+
+    function initAudio() {
+      if (!audioCtx) {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (AudioContext) audioCtx = new AudioContext();
+      }
+      if (audioCtx && audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+    }
+
+    function toggleSound() {
+      soundEnabled = !soundEnabled;
+      document.getElementById('soundIcon').textContent = soundEnabled ? '🔊' : '🔇';
+      document.getElementById('soundLabel').textContent = soundEnabled ? 'Suara Aktif' : 'Suara Mati';
+    }
+
+    function playSound(type) {
+      if (!soundEnabled) return;
+      initAudio();
+      if (!audioCtx) return;
+
+      const now = audioCtx.currentTime;
+
+      if (type === 'roll') {
+        for (let i = 0; i < 6; i++) {
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(220 + i * 55, now + i * 0.08);
+          osc.frequency.exponentialRampToValueAtTime(90, now + i * 0.08 + 0.06);
+          gain.gain.setValueAtTime(0.14, now + i * 0.08);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.08 + 0.065);
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.start(now + i * 0.08);
+          osc.stop(now + i * 0.08 + 0.07);
+        }
+      } else if (type === 'step') {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(480, now);
+        osc.frequency.exponentialRampToValueAtTime(640, now + 0.07);
+        gain.gain.setValueAtTime(0.12, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + 0.085);
+      } else if (type === 'six') {
+        [523.25, 659.25, 783.99].forEach((freq, idx) => {
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(freq, now + idx * 0.07);
+          gain.gain.setValueAtTime(0.15, now + idx * 0.07);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.07 + 0.22);
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.start(now + idx * 0.07);
+          osc.stop(now + idx * 0.07 + 0.24);
+        });
+      } else if (type === 'capture') {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(340, now);
+        osc.frequency.exponentialRampToValueAtTime(75, now + 0.35);
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.36);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + 0.38);
+      } else if (type === 'home') {
+        [523.25, 659.25, 783.99, 1046.5].forEach((freq, idx) => {
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, now + idx * 0.09);
+          gain.gain.setValueAtTime(0.18, now + idx * 0.09);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.09 + 0.3);
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.start(now + idx * 0.09);
+          osc.stop(now + idx * 0.09 + 0.32);
+        });
+      }
+    }
+
+    /* =========================================================================
+       3. STATE PERMAINAN & KONFIGURASI PEMAIN (DEFAULT 4 PEMAIN MANUSIA)
+       ========================================================================= */
+    let playerConfigs = {
+      red: 'human',
+      green: 'human',
+      neon: 'human',
+      blue: 'human'
+    };
+
+    let gameState = {
+      activePlayers: ['red', 'green', 'neon', 'blue'],
+      currentTurnIndex: 0,
+      diceValue: null,
+      phase: 'WAIT_ROLL',
+      consecutiveSixes: 0,
+      tokens: {
+        red: [-1, -1, -1, -1],
+        green: [-1, -1, -1, -1],
+        neon: [-1, -1, -1, -1],
+        blue: [-1, -1, -1, -1]
+      },
+      movableTokenIndices: [],
+      winners: []
+    };
+
+    /* =========================================================================
+       4. MEMBANGUN PAPAN LUDO 15x15 & UI PENGATURAN
+       ========================================================================= */
+    function buildBoardGrid() {
+      const grid = document.getElementById('ludoGrid');
+      const oldCells = grid.querySelectorAll('.cell');
+      oldCells.forEach(c => c.remove());
+
+      for (let r = 0; r < 15; r++) {
+        for (let c = 0; c < 15; c++) {
+          const cell = document.createElement('div');
+          cell.className = 'cell';
+          cell.style.gridRow = r + 1;
+          cell.style.gridColumn = c + 1;
+
+          // Jalur masuk warna-warni ke tengah
+          if (r === 7 && c >= 1 && c <= 5) cell.classList.add('cell-red');
+          if (c === 7 && r >= 1 && r <= 5) cell.classList.add('cell-green');
+          if (r === 7 && c >= 9 && c <= 13) cell.classList.add('cell-neon');
+          if (c === 7 && r >= 9 && r <= 13) cell.classList.add('cell-blue');
+
+          // Kotak Start masing-masing warna
+          if (r === 6 && c === 1) cell.classList.add('cell-red', 'safe-star');
+          if (r === 1 && c === 8) cell.classList.add('cell-green', 'safe-star');
+          if (r === 8 && c === 13) cell.classList.add('cell-neon', 'safe-star');
+          if (r === 13 && c === 6) cell.classList.add('cell-blue', 'safe-star');
+
+          // 4 Kotak Bintang Aman tambahan
+          if ((r === 2 && c === 6) || (r === 6 && c === 12) || (r === 12 && c === 8) || (r === 8 && c === 2)) {
+            cell.classList.add('safe-star');
+          }
+
+          grid.appendChild(cell);
+        }
+      }
+    }
+
+    function renderSetupModal() {
+      const list = document.getElementById('playerConfigList');
+      list.innerHTML = '';
+
+      TURN_ORDER.forEach(color => {
+        const def = PLAYER_DEFS[color];
+        const currentMode = playerConfigs[color];
+
+        const row = document.createElement('div');
+        row.className = 'flex items-center justify-between p-3 rounded-2xl bg-slate-800/80 border border-slate-700';
+
+        const dotStyle = color === 'neon'
+          ? 'background:#ccff00; box-shadow:0 0 12px rgba(204,255,0,0.8);'
+          : `background:${def.hex};`;
+
+        row.innerHTML = `
+          <div class="flex items-center gap-3">
+            <span class="w-5 h-5 rounded-full border-2 border-white" style="${dotStyle}"></span>
+            <span class="font-bold text-sm text-white">${def.name}</span>
+          </div>
+          <div class="flex rounded-xl bg-slate-950 p-1 border border-slate-700/80 text-xs font-semibold">
+            <button type="button" onclick="setPlayerConfig('${color}', 'human')"
+              class="px-2.5 py-1 rounded-lg transition cursor-pointer ${currentMode === 'human' ? 'bg-slate-700 text-white shadow' : 'text-slate-400 hover:text-white'}">
+              👤 Manusia
+            </button>
+            <button type="button" onclick="setPlayerConfig('${color}', 'ai')"
+              class="px-2.5 py-1 rounded-lg transition cursor-pointer ${currentMode === 'ai' ? 'bg-slate-700 text-white shadow' : 'text-slate-400 hover:text-white'}">
+              🤖 Bot AI
+            </button>
+            <button type="button" onclick="setPlayerConfig('${color}', 'off')"
+              class="px-2.5 py-1 rounded-lg transition cursor-pointer ${currentMode === 'off' ? 'bg-red-500/30 text-red-300' : 'text-slate-500 hover:text-slate-300'}">
+              Off
+            </button>
+          </div>
+        `;
+        list.appendChild(row);
+      });
+    }
+
+    function setPlayerConfig(color, mode) {
+      playerConfigs[color] = mode;
+      renderSetupModal();
+    }
+
+    function openSetupModal() {
+      document.getElementById('victoryModal').classList.add('hidden');
+      renderSetupModal();
+      document.getElementById('setupModal').classList.remove('hidden');
+    }
+
+    function closeSetupModal() {
+      document.getElementById('setupModal').classList.add('hidden');
+    }
+
+    function startNewGame() {
+      const active = TURN_ORDER.filter(c => playerConfigs[c] !== 'off');
+      if (active.length < 2) {
+        document.getElementById('setupError').classList.remove('hidden');
+        return;
+      }
+      document.getElementById('setupError').classList.add('hidden');
+      document.getElementById('setupModal').classList.add('hidden');
+      document.getElementById('victoryModal').classList.add('hidden');
+
+      gameState = {
+        activePlayers: active,
+        currentTurnIndex: 0,
+        diceValue: null,
+        phase: 'WAIT_ROLL',
+        consecutiveSixes: 0,
+        tokens: {},
+        movableTokenIndices: [],
+        winners: []
+      };
+
+      TURN_ORDER.forEach(c => {
+        gameState.tokens[c] = [-1, -1, -1, -1];
+      });
+
+      const cube = document.getElementById('diceCube');
+      cube.classList.remove('rolling');
+      cube.style.transform = 'rotateX(-22deg) rotateY(28deg)';
+      document.getElementById('lastRollText').textContent = '-';
+      setStatus('');
+
+      updateAllUI();
+      checkAITurn();
+    }
+
+    /* =========================================================================
+       5. LOGIKA POSISI KOORDINAT PION
+       ========================================================================= */
+    function getGlobalTrackIndex(color, step) {
+      if (step < 0 || step > 50) return -1;
+      return (PLAYER_DEFS[color].startIndex + step) % 52;
+    }
+
+    function getTokenCoord(color, tokenIdx) {
+      const step = gameState.tokens[color][tokenIdx];
+      const def = PLAYER_DEFS[color];
+
+      if (step === -1) {
+        return def.homeSlots[tokenIdx];
+      }
+      if (step >= 0 && step <= 50) {
+        const globalIdx = getGlobalTrackIndex(color, step);
+        return MAIN_TRACK[globalIdx];
+      }
+      const stretchIdx = Math.min(step - 51, 5);
+      return def.homeStretch[stretchIdx];
+    }
+
+    /* =========================================================================
+       6. ANIMASI DADU 3D BERPUTAR & PENGACAKAN ANGKA 1-6
+       ========================================================================= */
+    const DICE_ROTATIONS = {
+      1: 'rotateX(0deg) rotateY(0deg)',
+      2: 'rotateX(0deg) rotateY(-90deg)',
+      3: 'rotateX(-90deg) rotateY(0deg)',
+      4: 'rotateX(90deg) rotateY(0deg)',
+      5: 'rotateX(0deg) rotateY(90deg)',
+      6: 'rotateX(0deg) rotateY(180deg)'
+    };
+
+    function handleDiceClick() {
+      const currentColor = gameState.activePlayers[gameState.currentTurnIndex];
+      if (!currentColor) return;
+      if (playerConfigs[currentColor] !== 'human') return;
+      if (gameState.phase !== 'WAIT_ROLL') return;
+
+      rollDice();
+    }
+
+    function rollDice() {
+      if (gameState.phase !== 'WAIT_ROLL') return;
+
+      gameState.phase = 'ROLLING';
+      updateDiceControls();
+      playSound('roll');
+
+      const cube = document.getElementById('diceCube');
+      cube.classList.add('rolling');
+
+      const currentColor = gameState.activePlayers[gameState.currentTurnIndex];
+
+      setTimeout(() => {
+        cube.classList.remove('rolling');
+
+        // Angka acak 1 sampai 6
+        const rolled = Math.floor(Math.random() * 6) + 1;
+        gameState.diceValue = rolled;
+        document.getElementById('lastRollText').textContent = rolled;
+
+        // Tampilkan teks persis sesuai spesifikasi user setelah dadu berhenti
+        const rollMessages = {
+          1: 'Angka 1: ANDA TIDAK BISA JALAN',
+          2: 'Angka 2: ANDA TIDAK BISA JALAN',
+          3: 'Angka 3: ANDA TIDAK BISA JALAN',
+          4: 'Angka 4: ANDA TIDAK BISA JALAN',
+          5: 'Angka 5: ANDA TIDAK BISA JALAN',
+          6: 'Angka 6: ANDA SUDAH BISA BERJALAN✅'
+        };
+        setStatus(rollMessages[rolled], rolled === 6 ? 'success' : 'blocked');
+
+        // Rotasi kubus 3D ke angka yang keluar
+        const tiltX = (Math.random() * 8 - 4).toFixed(1);
+        const tiltY = (Math.random() * 8 - 4).toFixed(1);
+        cube.style.transform = `${DICE_ROTATIONS[rolled]} rotateZ(${tiltX}deg) rotateX(${tiltY}deg)`;
+
+        if (rolled === 6) {
+          gameState.consecutiveSixes++;
+          playSound('six');
+        } else {
+          gameState.consecutiveSixes = 0;
+        }
+
+        // Aturan 3 kali angka 6 berturut-turut -> hangus & ganti giliran
+        if (gameState.consecutiveSixes >= 3) {
+          gameState.consecutiveSixes = 0;
+          setTimeout(() => nextTurn(), 1300);
+          return;
+        }
+
+        evaluateMovesAfterRoll(currentColor, rolled);
+      }, 700);
+    }
+
+    function evaluateMovesAfterRoll(color, rolled) {
+      const tokens = gameState.tokens[color];
+      const validIndices = [];
+
+      tokens.forEach((step, idx) => {
+        if (step === 56) return;
+        if (step === -1) {
+          if (rolled === 6) validIndices.push(idx);
+        } else if (step + rolled <= 56) {
+          validIndices.push(idx);
+        }
+      });
+
+      gameState.movableTokenIndices = validIndices;
+
+      if (validIndices.length === 0) {
+        renderTokens();
+        setTimeout(() => {
+          if (rolled === 6) {
+            gameState.phase = 'WAIT_ROLL';
+            updateAllUI();
+            checkAITurn();
+          } else {
+            nextTurn();
+          }
+        }, 1200);
+        return;
+      }
+
+      const isAI = playerConfigs[color] === 'ai';
+      const allInHome = validIndices.every(i => tokens[i] === -1);
+
+      if (isAI) {
+        gameState.phase = 'SELECT_TOKEN';
+        renderTokens();
+        setTimeout(() => {
+          const chosenIdx = chooseBestAIMove(color, validIndices, rolled);
+          executeTokenMove(color, chosenIdx, rolled);
+        }, 650);
+      } else if (validIndices.length === 1 || allInHome) {
+        gameState.phase = 'SELECT_TOKEN';
+        renderTokens();
+        setTimeout(() => {
+          executeTokenMove(color, validIndices[0], rolled);
+        }, 450);
+      } else {
+        // Biarkan pemain memilih pion mana yang ingin diklik
+        gameState.phase = 'SELECT_TOKEN';
+        updateAllUI();
+      }
+    }
+
+    /* =========================================================================
+       7. AI BOT LOGIC
+       ========================================================================= */
+    function chooseBestAIMove(color, validIndices, rolled) {
+      let bestIdx = validIndices[0];
+      let bestScore = -999;
+
+      validIndices.forEach(idx => {
+        let score = 0;
+        const curStep = gameState.tokens[color][idx];
+        const nextStep = curStep === -1 ? 0 : curStep + rolled;
+
+        if (nextStep === 56) score += 120;
+        if (nextStep >= 0 && nextStep <= 50) {
+          const targetGlobal = getGlobalTrackIndex(color, nextStep);
+          if (!SAFE_INDICES.has(targetGlobal)) {
+            const hasEnemy = checkEnemyAtGlobal(color, targetGlobal).length > 0;
+            if (hasEnemy) score += 100;
+          }
+          if (SAFE_INDICES.has(targetGlobal)) score += 35;
+        }
+        if (curStep === -1) score += 60;
+        if (curStep <= 50 && nextStep > 50) score += 50;
+        score += nextStep * 0.4;
+
+        if (score > bestScore) {
+          bestScore = score;
+          bestIdx = idx;
+        }
+      });
+
+      return bestIdx;
+    }
+
+    /* =========================================================================
+       8. EKSEKUSI GERAKAN PION & PERGANTIAN GILIRAN
+       ========================================================================= */
+    function handleTokenClick(color, tokenIdx) {
+      const currentColor = gameState.activePlayers[gameState.currentTurnIndex];
+      if (color !== currentColor) return;
+      if (playerConfigs[color] !== 'human') return;
+      if (gameState.phase !== 'SELECT_TOKEN') return;
+      if (!gameState.movableTokenIndices.includes(tokenIdx)) return;
+
+      executeTokenMove(color, tokenIdx, gameState.diceValue);
+    }
+
+    function executeTokenMove(color, tokenIdx, rolled) {
+      gameState.phase = 'MOVING';
+      gameState.movableTokenIndices = [];
+
+      const currentStep = gameState.tokens[color][tokenIdx];
+
+      if (currentStep === -1) {
+        gameState.tokens[color][tokenIdx] = 0;
+        playSound('step');
+        renderTokens();
+        finishMoveResolution(color, tokenIdx, rolled, false);
+        return;
+      }
+
+      let stepsRemaining = rolled;
+      const stepInterval = setInterval(() => {
+        gameState.tokens[color][tokenIdx]++;
+        playSound('step');
+        renderTokens();
+        stepsRemaining--;
+
+        if (stepsRemaining <= 0) {
+          clearInterval(stepInterval);
+          const finalStep = gameState.tokens[color][tokenIdx];
+          let capturedSomeone = false;
+
+          if (finalStep >= 0 && finalStep <= 50) {
+            const globalIdx = getGlobalTrackIndex(color, finalStep);
+            if (!SAFE_INDICES.has(globalIdx)) {
+              const enemies = checkEnemyAtGlobal(color, globalIdx);
+              if (enemies.length > 0) {
+                enemies.forEach(enemy => {
+                  gameState.tokens[enemy.color][enemy.tokenIdx] = -1;
+                });
+                capturedSomeone = true;
+                playSound('capture');
+              }
+            }
+          }
+
+          if (finalStep === 56) {
+            playSound('home');
+          }
+
+          finishMoveResolution(color, tokenIdx, rolled, capturedSomeone);
+        }
+      }, 175);
+    }
+
+    function checkEnemyAtGlobal(myColor, globalIdx) {
+      const found = [];
+      gameState.activePlayers.forEach(otherColor => {
+        if (otherColor === myColor) return;
+        gameState.tokens[otherColor].forEach((step, idx) => {
+          if (step >= 0 && step <= 50) {
+            if (getGlobalTrackIndex(otherColor, step) === globalIdx) {
+              found.push({ color: otherColor, tokenIdx: idx });
+            }
+          }
+        });
+      });
+      return found;
+    }
+
+    function finishMoveResolution(color, tokenIdx, rolled, capturedSomeone) {
+      const reachedHome = gameState.tokens[color][tokenIdx] === 56;
+      const allFinished = gameState.tokens[color].every(s => s === 56);
+
+      if (allFinished && !gameState.winners.includes(color)) {
+        gameState.winners.push(color);
+
+        const remainingPlayers = gameState.activePlayers.filter(c => !gameState.winners.includes(c));
+        if (remainingPlayers.length <= 1) {
+          if (remainingPlayers.length === 1) {
+            gameState.winners.push(remainingPlayers[0]);
+          }
+          gameState.phase = 'GAME_OVER';
+          showVictoryModal();
+          return;
+        }
+      }
+
+      const getsBonusTurn = !allFinished && (rolled === 6 || capturedSomeone || reachedHome);
+
+      if (getsBonusTurn) {
+        gameState.phase = 'WAIT_ROLL';
+        updateAllUI();
+        checkAITurn();
+      } else {
+        nextTurn();
+      }
+    }
+
+    function nextTurn() {
+      gameState.consecutiveSixes = 0;
+      gameState.diceValue = null;
+      gameState.movableTokenIndices = [];
+
+      let attempts = 0;
+      do {
+        gameState.currentTurnIndex = (gameState.currentTurnIndex + 1) % gameState.activePlayers.length;
+        attempts++;
+      } while (
+        gameState.winners.includes(gameState.activePlayers[gameState.currentTurnIndex]) &&
+        attempts <= gameState.activePlayers.length
+      );
+
+      gameState.phase = 'WAIT_ROLL';
+      updateAllUI();
+      checkAITurn();
+    }
+
+    function checkAITurn() {
+      const currentColor = gameState.activePlayers[gameState.currentTurnIndex];
+      if (gameState.phase === 'WAIT_ROLL' && playerConfigs[currentColor] === 'ai') {
+        setTimeout(() => {
+          if (gameState.phase === 'WAIT_ROLL' && gameState.activePlayers[gameState.currentTurnIndex] === currentColor) {
+            rollDice();
+          }
+        }, 850);
+      }
+    }
+
+    /* =========================================================================
+       9. RENDER TAMPILAN PION 3D & KONTROL DADU
+       ========================================================================= */
+    function createPawnSVG(color, idx) {
+      const def = PLAYER_DEFS[color];
+      const uid = `${color}_${idx}`;
+      const strokeMain = color === 'neon' ? '#0f172a' : '#ffffff';
+
+      return `
+        <svg viewBox="0 0 64 88" aria-hidden="true">
+          <defs>
+            <radialGradient id="headGrad_${uid}" cx="35%" cy="28%" r="68%">
+              <stop offset="0%" stop-color="#ffffff" stop-opacity="0.95"/>
+              <stop offset="28%" stop-color="${def.lightHex}"/>
+              <stop offset="68%" stop-color="${def.midHex}"/>
+              <stop offset="100%" stop-color="${def.darkHex}"/>
+            </radialGradient>
+            <linearGradient id="bodyGrad_${uid}" x1="15%" y1="0%" x2="88%" y2="100%">
+              <stop offset="0%" stop-color="${def.lightHex}"/>
+              <stop offset="45%" stop-color="${def.midHex}"/>
+              <stop offset="100%" stop-color="${def.darkHex}"/>
+            </linearGradient>
+            <linearGradient id="baseGrad_${uid}" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="${def.darkHex}"/>
+              <stop offset="35%" stop-color="${def.lightHex}"/>
+              <stop offset="65%" stop-color="${def.midHex}"/>
+              <stop offset="100%" stop-color="${def.darkHex}"/>
+            </linearGradient>
+          </defs>
+
+          <!-- Bayangan Jatuh Realistis di Atas Dudukan -->
+          <ellipse cx="32" cy="73" rx="22" ry="8.5" fill="rgba(2, 6, 23, 0.36)"/>
+
+          <!-- Alas Dasar Berlapis (Pedestal Base) -->
+          <ellipse cx="32" cy="70" rx="20" ry="7.8" fill="url(#baseGrad_${uid})" stroke="${strokeMain}" stroke-width="2.2"/>
+          <ellipse cx="32" cy="66.5" rx="16.5" ry="6" fill="url(#bodyGrad_${uid})" stroke="${strokeMain}" stroke-width="1.6"/>
+
+          <!-- Badan / Leher Bidak Catur Modern -->
+          <path d="M 18 65.5 C 19.5 52, 24.5 42, 25.5 34 L 38.5 34 C 39.5 42, 44.5 52, 46 65.5 Z"
+                fill="url(#bodyGrad_${uid})" stroke="${strokeMain}" stroke-width="2.2" stroke-linejoin="round"/>
+
+          <!-- Kilau Vertikal pada Badan Bidak -->
+          <path d="M 23.5 62 C 24.5 51, 27 42, 27.8 35.5 L 30.8 35.5 C 30 42, 28.2 51, 27.5 62 Z"
+                fill="rgba(255, 255, 255, 0.35)"/>
+
+          <!-- Cincin Aksen Kerah Emas / Kontras -->
+          <ellipse cx="32" cy="34.5" rx="10.5" ry="3.6" fill="${def.rimHex}" stroke="${strokeMain}" stroke-width="1.4"/>
+
+          <!-- Kepala Bulat 3D Mengilap -->
+          <circle cx="32" cy="21" r="13.5" fill="url(#headGrad_${uid})" stroke="${strokeMain}" stroke-width="2.3"/>
+
+          <!-- Specular Highlight (Kilau Cahaya di Kepala Pion) -->
+          <ellipse cx="27.2" cy="15.8" rx="4.4" ry="2.6" transform="rotate(-28 27.2 15.8)" fill="rgba(255, 255, 255, 0.85)"/>
+          <circle cx="24.2" cy="20.2" r="1.4" fill="rgba(255, 255, 255, 0.65)"/>
+        </svg>
+      `;
+    }
+
+    function renderTokens() {
+      const layer = document.getElementById('tokensLayer');
+      layer.innerHTML = '';
+
+      const coordGroups = {};
+
+      gameState.activePlayers.forEach(color => {
+        gameState.tokens[color].forEach((step, idx) => {
+          const coord = getTokenCoord(color, idx);
+          const key = `${coord.r.toFixed(2)},${coord.c.toFixed(2)}`;
+          if (!coordGroups[key]) coordGroups[key] = [];
+          coordGroups[key].push({ color, idx, coord });
+        });
+      });
+
+      const currentColor = gameState.activePlayers[gameState.currentTurnIndex];
+
+      Object.values(coordGroups).forEach(group => {
+        const count = group.length;
+        group.forEach((item, groupPos) => {
+          const { color, idx, coord } = item;
+          const tokenEl = document.createElement('div');
+          const isMovable =
+            gameState.phase === 'SELECT_TOKEN' &&
+            color === currentColor &&
+            playerConfigs[color] === 'human' &&
+            gameState.movableTokenIndices.includes(idx);
+
+          tokenEl.className = `token token-${color} ${isMovable ? 'movable' : ''}`;
+          tokenEl.innerHTML = `<div class="token-aura"></div>${createPawnSVG(color, idx)}`;
+
+          let topPct = ((coord.r + 0.5) / 15) * 100;
+          let leftPct = ((coord.c + 0.5) / 15) * 100;
+
+          if (count > 1) {
+            const angle = (groupPos / count) * Math.PI * 2;
+            const offset = count === 2 ? 1.15 : 1.4;
+            topPct += Math.sin(angle) * offset;
+            leftPct += Math.cos(angle) * offset;
+            tokenEl.style.width = '5.1%';
+            tokenEl.style.height = '7.1%';
+          }
+
+          tokenEl.style.top = `${topPct}%`;
+          tokenEl.style.left = `${leftPct}%`;
+          // Urutan tumpukan berdasarkan posisi vertikal (baris bawah di depan) agar perspektif 3D natural
+          tokenEl.style.zIndex = isMovable ? 50 : Math.round(coord.r * 2) + 10 + groupPos;
+
+          if (isMovable) {
+            tokenEl.onclick = (e) => {
+              e.stopPropagation();
+              handleTokenClick(color, idx);
+            };
+          }
+
+          layer.appendChild(tokenEl);
+        });
+      });
+    }
+
+    function updateDiceControls() {
+      const currentColor = gameState.activePlayers[gameState.currentTurnIndex];
+      if (!currentColor) return;
+
+      const def = PLAYER_DEFS[currentColor];
+      const isHumanTurn = playerConfigs[currentColor] === 'human' && gameState.phase === 'WAIT_ROLL';
+
+      const turnBadge = document.getElementById('turnBadge');
+      turnBadge.textContent = `GILIRAN ${def.name.toUpperCase()}`;
+      turnBadge.className = `px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider border ${def.badgeClass}`;
+
+      const diceStage = document.getElementById('diceStage');
+      diceStage.style.setProperty('--active-glow', def.glow);
+
+      const btnRoll = document.getElementById('btnRollMain');
+
+      if (isHumanTurn) {
+        diceStage.classList.remove('disabled');
+        diceStage.classList.add('ready-to-roll');
+        btnRoll.disabled = false;
+        btnRoll.classList.remove('opacity-50', 'cursor-not-allowed');
+      } else {
+        diceStage.classList.add('disabled');
+        diceStage.classList.remove('ready-to-roll');
+        btnRoll.disabled = true;
+        btnRoll.classList.add('opacity-50', 'cursor-not-allowed');
+      }
+    }
+
+    function setStatus(msg, tone = 'neutral') {
+      const el = document.getElementById('statusText');
+      el.textContent = msg;
+      el.className = 'text-xs sm:text-sm font-extrabold tracking-wide min-h-[2rem] flex items-center justify-center px-1';
+      if (tone === 'success') {
+        el.classList.add('text-lime-300', 'neon-text-glow');
+      } else if (tone === 'blocked') {
+        el.classList.add('text-rose-400');
+      } else {
+        el.classList.add('text-slate-200');
+      }
+    }
+
+    function updateAllUI() {
+      renderTokens();
+      updateDiceControls();
+    }
+
+    function showVictoryModal() {
+      const podiumList = document.getElementById('podiumList');
+      podiumList.innerHTML = '';
+
+      const medals = ['🥇 Juara 1', '🥈 Juara 2', '🥉 Juara 3', '🎖️ Peringkat 4'];
+
+      gameState.winners.forEach((color, idx) => {
+        const def = PLAYER_DEFS[color];
+        const row = document.createElement('div');
+        row.className = 'flex items-center justify-between p-3 rounded-2xl bg-slate-800/90 border border-slate-700';
+        row.innerHTML = `
+          <div class="flex items-center gap-3">
+            <span class="font-extrabold text-sm text-amber-300">${medals[idx] || `#${idx + 1}`}</span>
+            <span class="w-4 h-4 rounded-full border border-white" style="background:${def.hex}"></span>
+            <span class="font-bold text-sm text-white">${def.name}</span>
+          </div>
+          <span class="text-xs text-slate-400">${playerConfigs[color] === 'ai' ? 'Bot AI' : 'Manusia'}</span>
+        `;
+        podiumList.appendChild(row);
+      });
+
+      document.getElementById('victoryModal').classList.remove('hidden');
+    }
+
+    // Inisialisasi papan dan langsung mulai game saat halaman dimuat
+    buildBoardGrid();
+    startNewGame();
+  </script>
+</body>
+</html>
